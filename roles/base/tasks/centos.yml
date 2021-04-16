@@ -1,68 +1,76 @@
 - name: 删除centos/redhat默认安装
   yum: 
     name: 
-      - firewalld
+      - firewalld #卸载firewalld 使用iptables-services
       - python-firewall
       - firewalld-filesystem
+      - ntp #卸载ntp 使用 chrony
     state: absent
 
 - name: 更改yum为阿里云 centos7 镜像
   ansible.builtin.copy:
-    src: centos7_yum.repo
-    dest: /etc/yum.repos.d
+    src: centos7_yum.repo/
+    dest: /etc/yum.repos.d/
     owner: root
     group: root
     mode: '0644'
     backup: yes
   when: ansible_distribution_major_version == "7"
 
+
 - name: 更改yum为阿里云 centos8 镜像
   ansible.builtin.copy:
-    src: centos8_yum.repo
-    dest: /etc/yum.repos.d
+    src: centos8_yum.repo/
+    dest: /etc/yum.repos.d/
     owner: root
     group: root
     mode: '0644'
     backup: yes
   when: ansible_distribution_major_version == "8"
 
+- block:
+  - name: 配置使 resolv.conf 重启依旧生效
+    lineinfile:
+       dest: /etc/NetworkManager/NetworkManager.conf
+  #     regexp: '^local2'
+  #     insertafter: "[main]"
+       insertbefore: "^#plugin"
+       line: "dns=none"
+  - name: 重启 NetworkManager 服务
+    service: name=NetworkManager state=restarted
+
+  - name: 设置默认dns地址
+    template: src=resolv.conf.j2 dest=/etc/resolv.conf
 
 
-- name: 安装基础软件包
+
+- name: 清理yum 缓存
+  shell: " yum clean all && yum makecache fast"
+  ignore_errors: true
+
+- name: 统一字符集
+  lineinfile:
+    dest: /etc/locale.conf
+    regexp: '^LANG='
+    line: 'LANG="en_US.UTF-8"'
+
+- name: 安装基础软件包7
   yum: 
-    name: 
-      - conntrack-tools     # ipvs 模式需要
-      - psmisc        # 安装psmisc 才能使用命令killall，它在keepalive的监测脚本中使用到
-      - nfs-utils     # 挂载nfs 共享文件需要 (创建基于 nfs的PV 需要)
-      - jq                  # 轻量JSON处理程序，安装docker查询镜像需要
-      - socat               # 用于port forwarding
-      - bash-completion     # bash命令补全工具，需要重新登录服务器生效
-      - rsync               # 文件同步工具，分发证书等配置文件需要
-      - ipset
-      - ipvsadm
-      - ntpdate
-      - lrzsz
-      - lvm2
-      - tmux
-      - wget
-      - xfsprogs
-      - atop
-      - iotop
-      - htop
-      - iftop
-      - nfs-utils
-      - MySQL-python
-      - crontabs
-      - daemonize
-      - nc
-      - telnet
-      - sysstat
-      - jnettop
-      - python-pip
-      - oddjob-mkhomedir
-      - zlib-devel
-      - openssl-devel
+    name:
+      - "{{ item }}"
     state: latest
+  with_items:
+    - "{{ centos7_pkgs }}"
+  when: ansible_distribution_major_version == "7"
+
+- name: 安装基础软件包8
+  yum:
+    name:
+      - "{{ item }}"
+    state: latest
+  with_items:
+    - "{{ centos8_pkgs }}"
+  when: ansible_distribution_major_version == "8"
 
 - name: 临时关闭 selinux
   shell: "setenforce 0"
@@ -74,13 +82,37 @@
     regexp: "^SELINUX="
     line: "SELINUX=disabled"
 
-# 优化设置 journal 日志相关，避免日志重复搜集，浪费系统资源
-- name: 禁止rsyslog获取journald日志
+- name: 记录用户操作命令 及 设置 history 上限
+  ansible.builtin.copy:
+    src: user_cmd.sh
+    dest: /etc/profile.d/user_cmd.sh
+
+- name: 设置终端超时时间
   lineinfile:
-    dest: /etc/rsyslog.conf
-    state: present
-    regexp: 'ModLoad imjournal'
-    line: '#$ModLoad imjournal # provides access to the systemd journal'
+    dest: /etc/profile.d/user_cmd.sh
+    line: "{{ cmd_timeout }}"
+
+- name: 设置时区
+  file:
+    src: /usr/share/zoneinfo/Asia/Shanghai
+    dest: /etc/localtime
+    state: link
+
+- name: 添加记录操作日志 rsyslog配置
+  lineinfile:
+     dest: /etc/rsyslog.conf
+#     regexp: '^local2'
+     insertbefore: '^local7'
+     line: 'local2.*                                                /var/log/cmd-line.log'
 
 - name: 重启rsyslog服务
   service: name=rsyslog state=restarted
+
+- block:
+  - name: 配置 chrony client
+    template: src=client-centos.conf.j2 dest=/etc/chrony.conf
+    when: (ansible_distribution == "CentOS" or ansible_distribution == "RedHat") and ansible_distribution_major_version == "7"
+
+  - name: 启动 chrony client
+    service: name=chronyd state=restarted enabled=yes
+    when: (ansible_distribution == "CentOS" or ansible_distribution == "RedHat") and ansible_distribution_major_version == "7"

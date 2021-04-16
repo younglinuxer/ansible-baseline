@@ -22,8 +22,6 @@ gpgkey=http://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-7
 name=CentOS-$releasever - Updates - mirrors.aliyun.com
 failovermethod=priority
 baseurl=http://mirrors.aliyun.com/centos/$releasever/updates/$basearch/
-        http://mirrors.aliyuncs.com/centos/$releasever/updates/$basearch/
-        http://mirrors.cloud.aliyuncs.com/centos/$releasever/updates/$basearch/
 gpgcheck=1
 gpgkey=http://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-7
  
