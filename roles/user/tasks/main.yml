@@ -1,18 +1,67 @@
 - name: 设置wheel用户组 免密sudo
-  linefile:
-    path: /etc/sudoers
+  lineinfile:
+    dest: /etc/sudoers
     state: present
     regexp: '^%wheel'
     line: '%wheel  ALL=(ALL)       NOPASSWD: ALL'
 
-
-##### 创建用户
-- name: 创建新的用户
+- name: 创建sudo 用户
   ansible.builtin.user:
-    name: young
-    password: "{{ '123456' | password_hash('sha512') }}"
+    name: "{{ su_username }}"
+    password: "{{ su_user_passwd | password_hash('sha512') }}"
     update_password: always
     comment: "袁杨"
-    generate_ssh_key: True
-    ssh_public_key: 'ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAgEAwQ2VZqXhUR9P+qwAI5x2fjbfvY/t9I+0rxsjaeRZHmcxxGqF3448qNZB+M5ha/FOw1bdklS6l4QAuxIf9rnIqRqMCbnl7mq813aQ4kVQIArAdSBJuQ8rmjwKLGd/ON37QwLvMwndyrfCV+JHSe/PuVpl+LcrgyaYI80kR17uPZO7V+piOa0ATBganHV+Y07u25/eM+2XEVftJ+uBAWRBLBKwlbJAZc3CotHHuwmbgGBGqKi5lU+NTmx9WpYi9zpyWwZ3BYEYTtNPOAjBVJxzE9WWY+NMTsTwlMUiJBf8JJtgMz41QUHYLvYE76IIyOhANwDcdtixKAHitN5w6X30E2/aMZr65bUqILNtSvZ5CfEzwOMQsN4vcWK9xsYieRIX4UPa1B+vphPFcVsE8oNAQGqXIrwz+Hg/iuRe0vtgPIFhXRKh/uK0xmmZ/U0tNKYFvXMb2UrAakuAIQ2S841UZ5zqZRJLxzIUc+2L10PNvhqGrA1n2AD8zexIO2gUSQJVs8+kCefEZeAbQVm90zzgswIzUU3+1SZiw/8LlvmO9wIFtfzm1z57YEjXmGoafx1mJlyU878g+//4TkJz2zzLQ67Qlu403JgLU5A+5yvNtDADJ142imW3DTt9xO8DL1BcmPHyuW+ThcK+4iIBLL69vOkGtMdez/EUH/LFFOAbl/0= younglinuxer'
     group: wheel
+
+- name: 设置root用户登陆的key
+  authorized_key:
+    user: root
+    state: present
+    key: '{{ item }}'
+  with_file:
+    - "{{ root_key }}"
+
+- name: 设置sudo用户登陆的key
+  authorized_key:
+    user: "{{ su_username }}"
+    state: present
+    key: '{{ item }}'
+  with_file:
+    - "{{ su_user_key }}"
+
+
+- block:
+  - name: 更改ssh 端口
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      regexp: '^#Port'
+      line: "{{ ssh_port }}"
+
+  - name: 关闭ssh dns反查
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      regexp: '^#UseDNS'
+      line: 'UseDNS no'
+
+  - name: 关闭密码认证 使用key认证
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      regexp: '^#PasswordAuthentication'
+      line: "PasswordAuthentication no"
+    when: disable_ssh_password == false
+
+  - name: 禁止root登陆
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      regexp: '^#PermitRootLogin'
+      line: "PermitRootLogin no"
+    when: disable_root_login  == true
+
+  - name: restart ssh
+    service:
+     name=sshd
+     state=restarted
