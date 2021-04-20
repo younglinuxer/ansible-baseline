@@ -36,24 +36,26 @@ yctl支持两个参数 node:更改base 和userl两个 role
 8.时间同步 放弃ntp 使用chrony同步ntp1.aliyun.com
 9.开启审计功能   xxxxxxxxxx
 10.resolv.conf设置dns 且重启不丢失   配置 NetworkManager.conf 
-11.是否记录操作系统日志到mysql(可选 默认关闭) xxxx
+11.是否记录操作系统日志到mysql(可选 默认关闭)
 12.设置终端超时时间 
 13.设置 history 命令显示具体时间 
 14.修改时区为上海
 15.禁用ipv6 (内核参数设置 没有单独的task)
-16.开启防止syn 攻击
+## 16.开启防止syn 攻击
 ```
 
 #### user
 
 ```
-1.新建sudo用户 (可配置)
+1.新建sudo用户 (hosts中配置用户名 密码 及公钥文件位置)
 2.配置sudo用户及root用户登陆使用的key
 3.批量新建普通用户 并设置第一次登陆必须修改密码
 ```
 
 #### ssh(等保相关)
 ```
+默认未禁止root登陆及关闭password认证 防止执行后部分用户不知道怎么连接的情况 需要开启则在hosts中将参数改为true即可
+
 1.更改ssh相关配置(端口,dns,禁止root,禁止密码登陆,强制使用v2协议 修复弱算法漏洞)
 2.设置用户密码策略 /etc/login.defs (密码过期相关策略等)
 3.audit.rules设置记录规则
@@ -66,6 +68,10 @@ yctl支持两个参数 node:更改base 和userl两个 role
 #### docker
 ```
 配置安装docker
+1.二进制安装docker （版本 19.03.14）
+2.更改为国内镜像源
+3.配置docker默认目录
+4.支持安装prometheus node_exporter 
 是否所有节点安装监控节点—— prometheus_nodes (可选)
 ```
 
