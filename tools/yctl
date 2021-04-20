@@ -1,0 +1,118 @@
+#!/bin/bash
+#  Create & manage k8s clusters
+
+set -o nounset
+set -o errexit
+#set -o xtrace
+
+function usage() {
+    echo -e "\033[33mUsage:\033[0m yctl COMMAND [args]"
+    cat <<EOF
+-------------------------------------------------------------------------------------
+    node  <ip>  #运行 base / user 部分
+    node-all  <ip>  #运行 所有 roles
+EOF
+}
+
+function logger() {
+  TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S')
+  case "$1" in
+    debug)
+      echo -e "$TIMESTAMP \033[36mDEBUG\033[0m $2"
+      ;;
+    info)
+      echo -e "$TIMESTAMP \033[32mINFO\033[0m $2"
+      ;;
+    warn)
+      echo -e "$TIMESTAMP \033[33mWARN\033[0m $2"
+      ;;
+    error)
+      echo -e "$TIMESTAMP \033[31mERROR\033[0m $2"
+      ;;
+    *)
+      ;;
+  esac
+}
+
+
+
+
+function checkout() {
+    [[ -d "clusters/$1" ]] || { logger error "invalid config, run 'ezctl new $1' first"; return 1; }
+    [[ -f "clusters/$1/kubectl.kubeconfig" ]] || { logger error "invalid kubeconfig, run 'ezctl setup $1' first"; return 1; }
+    logger info "set default kubeconfig: cluster $1 (\033[32mcurrent\033[0m)"
+    /bin/cp -f "clusters/$1/kubectl.kubeconfig" ~/.kube/config
+}
+
+### in-cluster operation functions ##############################
+
+function node() {
+    # check new node's address regexp
+    [[ $2 =~ ^(2(5[0-5]{1}|[0-4][0-9]{1})|[0-1]?[0-9]{1,2})(\.(2(5[0-5]{1}|[0-4][0-9]{1})|[0-1]?[0-9]{1,2})){3}$ ]] || { logger error "Invalid ip add:$2"; return 1; }
+
+    # check if the new node already exsited
+    grep $2 $BASE/hosts && { logger error "node $2 already existed in $BASE/hosts"; return 2; }
+
+    logger info "add $1 into 'deploy' group"
+    NODE_INFO="${@:2}"
+    sed -i "/\[deploy/a $NODE_INFO" "$BASE/hosts"
+
+    logger info "start to add a work node:$2 into cluster:$2"
+    ansible-playbook -i "$BASE/hosts" "$BASE/one-node.yml" -e "NODE_TO_ADD=$2"
+}
+
+
+function node-all() {
+    # check new node's address regexp
+    [[ $2 =~ ^(2(5[0-5]{1}|[0-4][0-9]{1})|[0-1]?[0-9]{1,2})(\.(2(5[0-5]{1}|[0-4][0-9]{1})|[0-1]?[0-9]{1,2})){3}$ ]] || { logger error "Invalid ip add:$2"; return 1; }
+
+    # check if the new node already exsited
+    grep $2 $BASE/hosts && { logger error "node $2 already existed in $BASE/hosts"; return 2; }
+
+    logger info "add $1 into 'deploy' group"
+    NODE_INFO="${@:2}"
+    sed -i "/\[deploy/a $NODE_INFO" "$BASE/hosts"
+
+    logger info "start to add a work node:$2 into cluster:$2"
+    ansible-playbook -i "$BASE/hosts" "$BASE/one-node-all.yml" -e "NODE_TO_ADD=$2"
+}
+
+
+
+### Main Lines ##################################################
+function main() {
+  BASE="/etc/ansible"
+  [[ -d "$BASE" ]] || { logger error "invalid dir:$BASE, try: 'ezdown -D'"; exit 1; }
+  cd "$BASE"
+
+  # check bash shell
+  readlink /proc/$$/exe|grep -q "dash" && { logger error "you should use bash shell only"; exit 1; }
+
+  # check 'ansible' executable
+  which ansible > /dev/null 2>&1 || { logger error "need 'ansible', try: 'pip install ansible'"; usage; exit 1; }
+  
+  [ "$#" -gt 0 ] || { usage >&2; exit 2; }
+  
+  case "$1" in
+      ### in-cluster operations #####################
+      (node)
+          [ "$#" -gt 1 ] || { usage >&2; exit 2; }
+          node "${@:1}"
+          ;;
+      (node-all)
+          [ "$#" -gt 1 ] || { usage >&2; exit 2; }
+          node-all "${@:1}"
+          ;;
+      (help)
+          [ "$#" -gt 1 ] || { usage >&2; exit 2; }
+          help-info "$2"
+          exit 0
+          ;;
+      (*)
+          usage
+          exit 0
+          ;;
+  esac
+ }
+
+main "$@" 

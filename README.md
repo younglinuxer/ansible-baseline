@@ -5,6 +5,24 @@
 
 ```
 
+### 使用方法
+```
+1.熟悉ansible的同学直接 https://github.com/younglinuxer/ansible-baseline.git /etc/ansible 自己更改hosts即可
+
+docker使用方法 已更新IP 192.168.44.141 为例子:
+1. 在服务器上生成密钥ssh-keygen 
+2.配置免密登陆 ssh-copy-id 192.168.44.141
+3.运行 docker run --name ansible -d  --network=host  -v /root/.ssh:/root/.ssh  younglinuxer/young-baseline
+3.运行命令即可完成该服务器的更改 docker exec -it ansible yctl node 192.168.44.141
+
+yctl支持两个参数 node:更改base 和userl两个 role 
+               node-all:执行所有role
+
+为了避免执行role后服务器更改较大的造成无法连接的情况 关闭root登陆及禁止密码登陆等参数在 hosts文件中进行关闭
+
+```
+
+
 
 #### base  
 ```
@@ -23,19 +41,27 @@
 13.设置 history 命令显示具体时间 
 14.修改时区为上海
 15.禁用ipv6 (内核参数设置 没有单独的task)
+16.开启防止syn 攻击
 ```
 
 #### user
 
 ```
 1.新建sudo用户 (可配置)
-2.配置该用户使用key登陆
-3.配置密码及登陆策略 pam login.defs
-4.设置超时时间
-5.ssh登陆设置 (拒绝root登陆 禁止密码登陆 更改ssh端口)
-6.登陆重试策略
-7.批量新建/删除 普通用户 并设置登陆时修改密码
+2.配置sudo用户及root用户登陆使用的key
+3.批量新建普通用户 并设置第一次登陆必须修改密码
 ```
+
+#### ssh(等保相关)
+```
+1.更改ssh相关配置(端口,dns,禁止root,禁止密码登陆,强制使用v2协议 修复弱算法漏洞)
+2.设置用户密码策略 /etc/login.defs (密码过期相关策略等)
+3.audit.rules设置记录规则
+4.永久设置umask为027 加强系统权限控制
+5./etc/pam.d/sshd 设置登陆重试锁定策略
+6.配置/etc/pam.d/system-auth-ac
+```
+
 
 #### docker
 ```

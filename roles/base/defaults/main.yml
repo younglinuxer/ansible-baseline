@@ -5,8 +5,7 @@ ntp_server: "ntp1.aliyun.com"
 nameserver01: "8.8.8.8"
 nameserver02: "114.114.114.114"
 
-# 开启系统日志记录到mysql
-enable_rsyslog_to_mysql: false
+
 #日志同步的数据库连接信息            ip    database user password
 rsyslog_mysql: "*.* :ommysql:10.0.0.16,Syslog,rsyslog_user,rsyslog_pass"
 
@@ -19,7 +18,7 @@ cmd_timeout: 'export TMOUT=600'
 centos7_pkgs: ["conntrack-tools","psmisc","nfs-utils","jq","socat","bash-completion","rsync","ipset","ipvsadm","ntpdate","lrzsz","lvm2","tmux","wget","xfsprogs",
 "iotop","htop","iftop","crontabs","daemonize","nc","telnet","dstat","sysstat","python-pip","oddjob-mkhomedir","zlib-devel","openssl-devel","iptables-services","chrony"]
 
-#centos8需要安装的软件
+#centos8需要安装的软件 centos8部分包名不一样了
 centos8_pkgs: ["htop","nmap","atop","iftop","jq"]
 
 

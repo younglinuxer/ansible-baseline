@@ -46,7 +46,8 @@
 
 - name: 清理yum 缓存
   shell: " yum clean all && yum makecache fast"
-  ignore_errors: true
+  args:
+    warn: no
 
 - name: 统一字符集
   lineinfile:
@@ -98,21 +99,44 @@
     dest: /etc/localtime
     state: link
 
-- name: 添加记录操作日志 rsyslog配置
-  lineinfile:
-     dest: /etc/rsyslog.conf
-#     regexp: '^local2'
-     insertbefore: '^local7'
-     line: 'local2.*                                                /var/log/cmd-line.log'
-
-- name: 重启rsyslog服务
-  service: name=rsyslog state=restarted
 
 - block:
-  - name: 配置 chrony client
-    template: src=client-centos.conf.j2 dest=/etc/chrony.conf
-    when: (ansible_distribution == "CentOS" or ansible_distribution == "RedHat") and ansible_distribution_major_version == "7"
+    - name: 添加记录操作日志 rsyslog配置
+      lineinfile:
+         dest: /etc/rsyslog.conf
+         insertbefore: '^local7'
+         line: 'local2.*                                                /var/log/cmd-line.log'
 
-  - name: 启动 chrony client
-    service: name=chronyd state=restarted enabled=yes
-    when: (ansible_distribution == "CentOS" or ansible_distribution == "RedHat") and ansible_distribution_major_version == "7"
+    - name: Show debug info
+      debug: var=enable_rsyslog_to_mysql verbosity=0
+
+    - name: 安装 rsyslog-mysql
+      yum:
+        name:
+          - "rsyslog-mysql"
+        state: latest
+      when: enable_rsyslog_to_mysql == "true"
+
+    - name: 设置日志存入到mysql的模块
+      lineinfile:
+        dest: /etc/rsyslog.conf
+        line: "$ModLoad ommysql"
+      when: enable_rsyslog_to_mysql == "true"
+
+    - name: 设置日志存入数据库连接信息
+      lineinfile:
+        dest: /etc/rsyslog.conf
+        line: "{{ rsyslog_mysql }}"
+      when: enable_rsyslog_to_mysql == "true"
+
+    - name: 重启rsyslog服务
+      service: name=rsyslog state=restarted
+
+- block:
+    - name: 配置 chrony client
+      template: src=client-centos.conf.j2 dest=/etc/chrony.conf
+      when: (ansible_distribution == "CentOS" or ansible_distribution == "RedHat") and ansible_distribution_major_version == "7"
+
+    - name: 启动 chrony client
+      service: name=chronyd state=restarted enabled=yes
+      when: (ansible_distribution == "CentOS" or ansible_distribution == "RedHat") and ansible_distribution_major_version == "7"

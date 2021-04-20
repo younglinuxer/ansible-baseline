@@ -1,0 +1,7 @@
+# Note: this playbook cann't run independently
+# Usage: easzctl add-node 1.1.1.1
+
+- hosts: "{{ NODE_TO_ADD }}" 
+  roles:
+  - base
+  - user

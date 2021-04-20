@@ -10,7 +10,7 @@
     name: "{{ su_username }}"
     password: "{{ su_user_passwd | password_hash('sha512') }}"
     update_password: always
-    comment: "袁杨"
+    comment: "sudoer"
     group: wheel
 
 - name: 设置root用户登陆的key
@@ -29,39 +29,19 @@
   with_file:
     - "{{ su_user_key }}"
 
-
 - block:
-  - name: 更改ssh 端口
-    lineinfile:
-      dest: /etc/ssh/sshd_config
-      state: present
-      regexp: '^#Port'
-      line: "{{ ssh_port }}"
+  - name: 批量创建普通用户
+    user:
+      name: '{{ item }}'
+      password: "{{ user_passwd | password_hash('sha512') }}"
+      update_password: on_create
+    register: user_created
+    when: create_user  == "true"
+    with_items:
+      - '{{ user_list }}'
 
-  - name: 关闭ssh dns反查
-    lineinfile:
-      dest: /etc/ssh/sshd_config
-      state: present
-      regexp: '^#UseDNS'
-      line: 'UseDNS no'
-
-  - name: 关闭密码认证 使用key认证
-    lineinfile:
-      dest: /etc/ssh/sshd_config
-      state: present
-      regexp: '^#PasswordAuthentication'
-      line: "PasswordAuthentication no"
-    when: disable_ssh_password == false
-
-  - name: 禁止root登陆
-    lineinfile:
-      dest: /etc/ssh/sshd_config
-      state: present
-      regexp: '^#PermitRootLogin'
-      line: "PermitRootLogin no"
-    when: disable_root_login  == true
-
-  - name: restart ssh
-    service:
-     name=sshd
-     state=restarted
+  - name: 强制用户登陆时更改密码
+    shell: "chage -d 0 {{ item }}"
+    when: user_created.changed
+    with_items:
+      - '{{ user_list }}'

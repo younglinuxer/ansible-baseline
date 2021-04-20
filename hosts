@@ -1,2 +1,31 @@
 [deploy]
-127.0.0.1
+192.168.44.141
+
+
+[all:vars]
+# 开启系统日志记录到mysql 需要对应修改 roles/base/defaults/main.yml 对应的mysql连接地址
+#enable_rsyslog_to_mysql=true
+enable_rsyslog_to_mysql=false
+
+################################ user 相关配置
+#是否批量创建普通用户
+create_user=false
+#sudoer用户配置
+su_username=centos
+# sudo用户密码
+su_user_passwd="younglinuxer"
+#新建的sudoer 用户公钥保存位置
+su_user_key="ssh-pub/young.pub"
+#### 新增root用户新增的key在 roles/user/defaults/main.yml 下配置
+
+############################## ssh相关配置
+# ssh端口配置
+ssh_port="Port 22"
+#是否禁止密码登陆
+disable_ssh_password=false
+#是否禁止root登陆
+disable_root_login=false
+
+#############################docker 相关配置参考roles/docker/defaults/main.yml
+# 安装prometheus_nodes 节点监控
+ENABLE_NODE_EXPORTTER=false

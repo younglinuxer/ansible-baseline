@@ -3,10 +3,10 @@
 # Requirement 2: download binaries at https://pan.baidu.com/s/1c4RFaA, and put into dir 'kubeasz/bin'
 # Build: docker build -t kubeasz:$TAG .
 
-FROM jmgao1983/ansible:v2.6 
+FROM younglinuxer/ansible:v2.9
 
-COPY kubeasz/ /etc/ansible
+COPY ./ /etc/ansible
 
-RUN ln -s /etc/ansible/tools/easzctl /usr/bin/easzctl
+RUN ln -s /etc/ansible/tools/yctl /usr/bin/yctl
 
 CMD [ "sleep", "360000000" ]

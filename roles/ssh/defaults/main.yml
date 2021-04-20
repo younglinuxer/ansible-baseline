@@ -1,0 +1,8 @@
+## ssh端口配置
+#ssh_port: "Port 22"
+#
+##是否禁止密码登陆
+#disable_ssh_password: false
+#
+##是否禁止root登陆
+#disable_root_login: false

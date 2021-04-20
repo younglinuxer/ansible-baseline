@@ -1,0 +1,143 @@
+
+#ssh相关配置
+- block:
+  - name: 更改ssh 端口
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      regexp: '^(# *)?Port'
+      line: "{{ ssh_port }}"
+
+  - name: 关闭ssh dns反查
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      regexp: '^(# *)?UseDNS'
+      line: 'UseDNS no'
+
+  - name: 关闭密码认证 使用key认证
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      regexp: '^PasswordAuthentication'
+      line: "PasswordAuthentication no"
+    when: disable_ssh_password == "true"
+
+  - name: 禁止root登陆
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      regexp: '^(# *)?PermitRootLogin'
+      line: "PermitRootLogin no"
+    when: disable_root_login  == "true"
+
+  - name: 禁止空密码登陆
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      regexp: '^(# *)?MaxAuthTries'
+      line: "MaxAuthTries 5"
+
+  - name: 密码最大尝试次数
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      regexp: '^(# *)?PermitEmptyPasswords'
+      line: "PermitEmptyPasswords no"
+
+  - name: 强制使用V2安全协议
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      line: "Protocol 2"
+
+  - name: 弱加密算法漏洞修复
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      line: "Ciphers aes128-ctr,aes192-ctr,aes256-ctr"
+
+  - name: restart ssh
+    service:
+     name=sshd
+     state=restarted
+
+#pam.d 相关策略配置
+
+- block:
+  - name: 安装pam_tally2
+    yum:
+      name:
+        - "pam"
+      state: latest
+
+  - name: 设置用户登陆错误锁定时间
+    lineinfile:
+      dest: /etc/pam.d/sshd
+      state: present
+      regexp: "#%PAM-1.0"
+      insertafter: '#%PAM-1.0'
+      line: "auth required pam_tally2.so deny=6 unlock_time=600 even_deny_root root_unlock_time=60"
+      backup: yes
+
+  - name: 设置system-auth-ac
+    lineinfile:
+      dest: /etc/pam.d/system-auth-ac
+      state: present
+      regexp: "#%PAM-1.0"
+      insertafter: '#%PAM-1.0'
+      line: "auth required pam_tally2.so deny=5 onerr=fail no_magic_root unlock_time=180 "
+      backup: yes
+
+
+#login.defs 策略配置
+
+- block:
+  - name: 设置密码最大过期时间
+    lineinfile:
+      dest: /etc/login.defs
+      state: present
+      regexp: "^PASS_MAX_DAYS"
+      line: "PASS_MAX_DAYS   90"
+
+  - name: 设置密码过期策略
+    lineinfile:
+      dest: /etc/login.defs
+      state: present
+      regexp: "^PASS_MIN_DAYS"
+      line: "PASS_MIN_DAYS   7"
+
+  - name: 设置密码长度策略
+    lineinfile:
+      dest: /etc/login.defs
+      state: present
+      regexp: "^PASS_MIN_LEN"
+      line: "PASS_MIN_LEN   5"
+
+  - name: 设置密码警告提示天数
+    lineinfile:
+      dest: /etc/login.defs
+      state: present
+      regexp: "^PASS_WARN_AGE"
+      line: "PASS_WARN_AGE   7"
+
+
+
+- name: 设置umask 为027
+  lineinfile:
+    dest: /etc/profile.d/user_cmd.sh
+    line: "umask 027"
+
+
+- block:
+    - name: 配置 audit
+      template:
+        src: 'audit.rules.j2'
+        dest: '/etc/audit/rules.d/audit.rules'
+        owner: 'root'
+        group: 'root'
+        mode: '0640'
+        backup: yes
+
+    - name: 重启 auditd
+      shell: "service auditd restart"
+      args:
+        warn: no

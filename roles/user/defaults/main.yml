@@ -1,21 +1,8 @@
-# 设置登陆的sudo用户
-su_username: ops
-# sudo用户密码
-su_user_passwd: "younglinuxer"
-# sudo用户登陆key文件存放位置 对应 roles/user/files下的相对路径
-su_user_key: "ssh-pub/young.pub"
-
 # root用户对应的登陆key
 root_key: "ssh-pub/young.pub"
 
-# 新建用户列表
-normaluser_list: ['dev01','dev02','dev03']
-
-# ssh端口配置
-ssh_port: "Port 65322"
-
-#是否禁止密码登陆
-disable_ssh_password: true
-
-#是否禁止root登陆
-disable_root_login: true
+# 新建普通用户列表
+#create_user: false
+#create_user: true
+user_list: ["dev01","dev02","dev03"]
+user_passwd: "12345678"
